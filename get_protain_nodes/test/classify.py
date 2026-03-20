@@ -23,7 +23,7 @@ OUTPUT_DIR = r"get_protain_nodes\\test"
 
 SEED = 42
 EPOCHS = 50
-BATCH_SIZE = 4
+BATCH_SIZE = 1
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-4
 HIDDEN_DIM = 128

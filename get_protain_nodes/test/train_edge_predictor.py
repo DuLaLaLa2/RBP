@@ -9,15 +9,15 @@ import os
 from edge_predictor import EdgePredictor
 
 
-TRAIN_DATA_PATH = r"get_protain_nodes\test\data\train_graphs_for_gan.pt"
-OUTPUT_DIR = r"get_protain_nodes\test\model"
+TRAIN_DATA_PATH = r"get_protain_nodes\\test\data\\train_graphs_for_gan.pt"
+OUTPUT_DIR = r"get_protain_nodes\\test\\model"
 
 NODE_FEATURE_DIM = 1408
 HIDDEN_DIM = 256
 EPOCHS = 50
 BATCH_SIZE = 512
 LEARNING_RATE = 1e-3
-EDGE_SAMPLE_RATIO = 0.1
+EDGE_SAMPLE_RATIO = 0.2
 SEED = 42
 
 
