@@ -5,8 +5,9 @@ from torch_geometric.data import Data
 from torch_geometric.nn import radius_graph
 import os
 
-STRUCT_DIR = Path(r"get_features\\get_stru\\data\\stru_feat2")
-SEQ_DIR    = Path(r"get_features\\get_seq\\data\\seq_feat2")
+
+STRUCT_DIR = Path(r"get_features\\get_stru\\data\\stru_feat")
+SEQ_DIR    = Path(r"get_features\\get_seq\\data\\seq_feat")
 
 # 统一解析
 def parse_key(filename):
@@ -162,7 +163,7 @@ def save_pyg_dataset(samples, save_path, radius=8.0):
     print(f"数据集构建完成：{len(data_list)} 张图")
     print(f"单张图信息：{data_list[0]}")
     os.makedirs(save_path, exist_ok=True)
-    save_file = save_path / "pyg_graph_datas_117_train_edge_attr.pt"
+    save_file = save_path / "pyg_graph_datas_495_train_edge_attr.pt"
     torch.save(data_list, save_file)
     print(f"✅ 数据集已保存至：{save_file}")
 

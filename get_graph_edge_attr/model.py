@@ -12,7 +12,7 @@ class ResidualGATLayer(nn.Module):
             hidden_dim, hidden_dim, heads=1, concat=False,
             dropout=dropout, edge_dim=edge_dim
         )
-        self.proj = nn.Linear(hidden_dim * 2, hidden_dim)
+        # self.proj = nn.Linear(hidden_dim * 2, hidden_dim)
         self.norm = nn.LayerNorm(hidden_dim)
         self.dropout = nn.Dropout(dropout)
 
@@ -20,8 +20,9 @@ class ResidualGATLayer(nn.Module):
         residual = x
         out = self.gat(x, edge_index, edge_attr)
         out = F.elu(out)
-        out = torch.cat([out, residual], dim=-1)
-        out = self.proj(out)
+        # out = torch.cat([out, residual], dim=-1)
+        # out = self.proj(out)
+        out = self.norm(out + residual)
         out = self.dropout(out)
         return out
 
@@ -70,25 +71,81 @@ class DeepResidualGAT(nn.Module):
         x = self.dropout(x)
         out = self.output_proj(x)
 
-        return F.log_softmax(out, dim=1)
+        return out.squeeze(-1)   # 1维 logits，正确
+
 
 
 # === Focal Loss （解决样本不平衡） ===
+# ✅ 真正适合你任务的：二分类 Sigmoid FocalLoss
+# ====================== 二分类专用 FocalLoss（完全修复版）======================
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2.0, alpha=None, reduction='mean'):
-        super().__init__()
+    def __init__(self, alpha=0.2, gamma=5, logits=True, reduce=True):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha  # 论文中的 α_t，用于 y=0 的权重
         self.gamma = gamma
-        self.alpha = alpha
-        self.reduction = reduction
+        self.logits = logits
+        self.reduce = reduce
 
     def forward(self, inputs, targets):
-        ce_loss = F.nll_loss(inputs, targets, reduction='none', weight=self.alpha)
-        pt = torch.exp(-ce_loss)
-        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
-
-        if self.reduction == 'mean':
-            return focal_loss.mean()
-        elif self.reduction == 'sum':
-            return focal_loss.sum()
+        # targets 转换为 float
+        targets = targets.float()
+        
+        # 计算概率
+        if self.logits:
+            probs = torch.sigmoid(inputs)  # P_t，预测为正类的概率
         else:
-            return focal_loss
+            probs = inputs  # 已经是概率
+        
+        # 按照论文公式分段计算
+        # y = 0 的情况：负类
+        loss_0 = -self.alpha * (1 - probs) ** self.gamma * torch.log(1 - probs)
+        
+        # y = 1 的情况：正类
+        loss_1 = -(1 - self.alpha) * probs ** self.gamma * torch.log(probs)
+        
+        # 根据真实标签选择对应的损失
+        loss = targets * loss_1 + (1 - targets) * loss_0
+        
+        if self.reduce:
+            return torch.mean(loss)
+        else:
+            return loss
+# class FocalLoss(nn.Module):
+#     def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+#         super().__init__()
+#         self.gamma = gamma
+#         self.alpha = alpha  # 平衡因子，可传 list 或 None
+#         self.reduction = reduction
+#     def forward(self, inputs, targets):
+#         # 确保标签是 float
+#         targets = targets.float()
+        
+#         # 计算基础二分类损失
+#         bce_loss = F.binary_cross_entropy_with_logits(
+#             inputs, targets, reduction="none"
+#         )
+        
+#         # 计算 Focal 核心
+#         p_t = torch.exp(-bce_loss)
+#         loss = (1 - p_t) ** self.gamma * bce_loss
+
+#         # 如果有 alpha，自动处理设备 + 类型
+#         if self.alpha is not None:
+#             if not isinstance(self.alpha, torch.Tensor):
+#                 alpha = torch.tensor(self.alpha, dtype=torch.float32, device=inputs.device)
+#             else:
+#                 alpha = self.alpha.to(inputs.device)
+            
+#             # 给正负样本加权
+#             alpha_t = alpha[0] * (1 - targets) + alpha[1] * targets
+#             loss = alpha_t * loss
+
+#         if self.reduction == "mean":
+#             return loss.mean()
+#         return loss.sum()
+
+

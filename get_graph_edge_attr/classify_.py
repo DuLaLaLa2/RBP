@@ -16,7 +16,7 @@ from model import DeepResidualGAT, FocalLoss
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 IN_DIM = 1408          # 节点特征维度
 HIDDEN_DIM = 128       # 隐藏维度
-OUT_DIM = 2            # 分类数
+OUT_DIM = 1            # 分类数
 NUM_LAYERS = 4
 HEADS = 4
 DROPOUT = 0.6
@@ -77,9 +77,10 @@ def evaluate(model, loader, device):
         out = model(data.x, data.edge_index, data.edge_attr)
         
         # 预测概率（用于AUC计算）
-        prob = torch.softmax(out, dim=1)[:, 1]  # 取正类概率
+        prob = torch.sigmoid(out)
         # 预测标签
-        pred = out.argmax(dim=1)
+        pred = (prob > 0.15).float()
+
 
         probs_all.extend(prob.cpu().numpy())
         preds_all.extend(pred.cpu().numpy())
@@ -122,7 +123,10 @@ if __name__ == "__main__":
     ).to(DEVICE)
 
     # 损失函数 & 优化器
-    criterion = FocalLoss(gamma=GAMMA)
+    
+    # criterion = FocalLoss(alpha=[1.0,15.0], gamma=GAMMA)
+    criterion = FocalLoss(alpha=0.1, gamma=GAMMA)
+    
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-5)
 
     # 训练
