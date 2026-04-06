@@ -4,10 +4,11 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import radius_graph
 import os
+from feat_fusion_CrossAttention import CrossAttentionFusion
 
 
-STRUCT_DIR = Path("get_features\get_stru\data\stru_feat_117_42")
-SEQ_DIR    = Path("get_features\get_seq\data\seq_feat2")
+STRUCT_DIR = Path("get_features\get_stru\data\stru_feat_495_42")
+SEQ_DIR    = Path("get_features\get_seq\data\seq_feat")
 
 # 统一解析
 def parse_key(filename):
@@ -110,14 +111,38 @@ def build_pyg_data_list(samples, radius=14.0):
         edge_index = torch.cat([edge_seq, edge_spa], dim=1)
 
 
-        data = Data(
-            struct_feat=struct_feat,   # [N, 42]
-            seq_feat=seq_feat,         # [N, 1280]
-            x=torch.cat([struct_feat, seq_feat], dim=-1),                       # [N, 1408]
-            edge_index=edge_index,     # [2, E]
-            pos=pos,                   # [N, 3]
-            y=y                         # [N] 节点级标签
+        # data = Data(
+        #     struct_feat=struct_feat,   # [N, 42]
+        #     seq_feat=seq_feat,         # [N, 1280]
+        #     x=torch.cat([struct_feat, seq_feat], dim=-1),                       # [N, 1408]
+        #     edge_index=edge_index,     # [2, E]
+        #     pos=pos,                   # [N, 3]
+        #     y=y                         # [N] 节点级标签
+        # )
+        # =====================使用交叉注意力进行特征融合===============================
+        # 初始化融合模型
+        fusion = CrossAttentionFusion(
+            struct_dim=42,
+            seq_dim=1280,
+            hidden_dim=256,
+            num_heads=4,
+            out_dim=256   # 最终x的维度，比拼接小很多，但效果更强
         )
+
+        # 融合得到最终节点特征 x
+        with torch.no_grad():
+            x_fused = fusion(struct_feat, seq_feat)
+
+        # 构造最终 Data
+        data = Data(
+            struct_feat=struct_feat,
+            seq_feat=seq_feat,
+            x=x_fused,                      # 👈 交叉注意力融合特征[256D]
+            edge_index=edge_index,
+            pos=pos,
+            y=y
+        )
+
 
         data_list.append(data)
 
@@ -129,7 +154,7 @@ def save_pyg_dataset(samples, save_path, radius=14.0):
     print(f"data_list info:{data_list[0]},{len(data_list)}")
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     
-    save_path = save_path / "pyg_graph_datas_117_test_1280_42.pt"
+    save_path = save_path / "pyg_graph_datas_495_train_1280_42_CA.pt"
     torch.save(data_list, save_path)
 
 

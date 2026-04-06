@@ -384,8 +384,8 @@ class Trainer:
 
 # ===================== 主程序 =====================
 if __name__ == "__main__":
-    data_train = torch.load("get_graph_edge_attr/data/pyg_graph_datas_495_train_edge_attr_2.pt",weights_only=False)
-    data_test = torch.load("get_graph_edge_attr/data/pyg_graph_datas_117_train_edge_attr_2.pt",weights_only=False)
+    data_train = torch.load("get_graph_edge_attr/data/pyg_graph_datas_495_train_edge_attr_2_1280_42_CA.pt",weights_only=False)
+    data_test = torch.load("get_graph_edge_attr/data/pyg_graph_datas_117_train_edge_attr_2_1280_42_CA.pt",weights_only=False)
     print(data_test[0])
     np.random.seed(42)
     idx = np.random.permutation(len(data_train))
